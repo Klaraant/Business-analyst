@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Business Analysis Agent</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-bg-primary: #ffffff;
+    --color-bg-secondary: #f7f7f5;
+    --color-bg-info: #e6f1fb;
+    --color-bg-success: #eaf3de;
+    --color-bg-warning: #faeeda;
+    --color-bg-danger: #fcebeb;
+    --color-text-primary: #1a1a18;
+    --color-text-secondary: #6b6b67;
+    --color-text-tertiary: #a0a09a;
+    --color-text-info: #185fa5;
+    --color-text-success: #3b6d11;
+    --color-text-warning: #854f0b;
+    --color-text-danger: #a32d2d;
+    --color-border-tertiary: rgba(0,0,0,0.1);
+    --color-border-secondary: rgba(0,0,0,0.18);
+    --color-border-primary: rgba(0,0,0,0.3);
+    --color-border-info: #378add;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-bg-primary: #1e1e1c;
+      --color-bg-secondary: #2a2a27;
+      --color-bg-info: #0c2a4a;
+      --color-bg-success: #172b08;
+      --color-bg-warning: #2e1d05;
+      --color-bg-danger: #2e0f0f;
+      --color-text-primary: #f0efe8;
+      --color-text-secondary: #9e9e98;
+      --color-text-tertiary: #6a6a65;
+      --color-text-info: #85b7eb;
+      --color-text-success: #97c459;
+      --color-text-warning: #ef9f27;
+      --color-text-danger: #f09595;
+      --color-border-tertiary: rgba(255,255,255,0.08);
+      --color-border-secondary: rgba(255,255,255,0.15);
+      --color-border-primary: rgba(255,255,255,0.25);
+      --color-border-info: #378add;
+    }
+  }
+  html, body { height: 100%; background: var(--color-bg-secondary); font-family: var(--font); }
+  body { display: flex; align-items: center; justify-content: center; padding: 16px; }
+
+  #app { display: flex; width: 100%; max-width: 1100px; height: calc(100vh - 32px); min-height: 600px; background: var(--color-bg-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+
+  /* SIDEBAR */
+  #sidebar { width: 220px; min-width: 220px; border-right: 0.5px solid var(--color-border-tertiary); display: flex; flex-direction: column; background: var(--color-bg-secondary); }
+  #sidebar-header { padding: 14px 14px 10px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  #sidebar-logo { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  #sidebar-logo i { font-size: 18px; color: var(--color-text-info); }
+  #sidebar-logo span { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+  #new-btn { width: 100%; font-size: 12px; padding: 7px 10px; border-radius: var(--radius-md); border: 0.5px dashed var(--color-border-secondary); background: transparent; color: var(--color-text-secondary); cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.15s; font-family: var(--font); }
+  #new-btn:hover { background: var(--color-bg-primary); color: var(--color-text-primary); }
+  #new-btn i { font-size: 14px; }
+  #ba-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+  .ba-item { padding: 8px 10px; border-radius: var(--radius-md); cursor: pointer; display: flex; flex-direction: column; gap: 2px; border: 0.5px solid transparent; transition: all 0.12s; }
+  .ba-item:hover { background: var(--color-bg-primary); }
+  .ba-item.active { background: var(--color-bg-primary); border-color: var(--color-border-secondary); }
+  .ba-item-name { font-size: 12.5px; font-weight: 500; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ba-item-meta { font-size: 10px; color: var(--color-text-tertiary); }
+  .ba-item-progress { display: flex; gap: 2px; margin-top: 4px; }
+  .ba-pip { width: 14px; height: 3px; border-radius: 99px; background: var(--color-border-tertiary); }
+  .ba-pip.done { background: var(--color-text-success); }
+  #sidebar-empty { padding: 24px 14px; font-size: 12px; color: var(--color-text-tertiary); text-align: center; line-height: 1.6; }
+
+  /* MAIN */
+  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  #welcome { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--color-text-tertiary); }
+  #welcome i { font-size: 44px; opacity: 0.25; }
+  #welcome p { font-size: 13px; }
+  #welcome strong { color: var(--color-text-secondary); }
+
+  /* EDITOR */
+  #editor { flex: 1; display: none; flex-direction: column; overflow: hidden; }
+  #editor-toolbar { padding: 10px 16px; border-bottom: 0.5px solid var(--color-border-tertiary); display: flex; align-items: center; gap: 8px; background: var(--color-bg-secondary); }
+  #ba-name-input { font-size: 14px; font-weight: 500; flex: 1; border: none; background: transparent; color: var(--color-text-primary); font-family: var(--font); outline: none; min-width: 0; }
+  #ba-name-input::placeholder { color: var(--color-text-tertiary); font-weight: 400; }
+  .toolbar-btn { font-size: 11px; padding: 5px 11px; border-radius: var(--radius-md); border: 0.5px solid var(--color-border-secondary); background: transparent; color: var(--color-text-secondary); cursor: pointer; display: flex; align-items: center; gap: 4px; white-space: nowrap; font-family: var(--font); transition: all 0.12s; }
+  .toolbar-btn:hover { background: var(--color-bg-primary); color: var(--color-text-primary); }
+  .toolbar-btn.active { background: var(--color-bg-primary); color: var(--color-text-primary); font-weight: 500; }
+  .toolbar-btn.warn { color: var(--color-text-warning); }
+  .toolbar-btn.warn:hover { background: var(--color-bg-warning); border-color: transparent; }
+  .toolbar-btn.danger:hover { background: var(--color-bg-danger); color: var(--color-text-danger); border-color: transparent; }
+  .toolbar-btn i { font-size: 13px; }
+  .toolbar-divider { width: 0.5px; height: 18px; background: var(--color-border-tertiary); }
+
+  /* EDITOR BODY — split */
+  #editor-body { flex: 1; display: flex; overflow: hidden; }
+
+  /* CHAT */
+  #chat-pane { display: flex; flex-direction: column; width: 380px; min-width: 380px; border-right: 0.5px solid var(--color-border-tertiary); overflow: hidden; }
+  #messages { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 90%; display: flex; flex-direction: column; gap: 3px; }
+  .msg.user { align-self: flex-end; align-items: flex-end; }
+  .msg.agent { align-self: flex-start; align-items: flex-start; }
+  .bubble { padding: 8px 12px; border-radius: var(--radius-lg); font-size: 13px; line-height: 1.65; }
+  .msg.user .bubble { background: var(--color-bg-info); color: var(--color-text-primary); border-bottom-right-radius: 4px; }
+  .msg.agent .bubble { background: var(--color-bg-secondary); color: var(--color-text-primary); border-bottom-left-radius: 4px; border: 0.5px solid var(--color-border-tertiary); white-space: pre-wrap; }
+  .msg-label { font-size: 10px; color: var(--color-text-tertiary); padding: 0 3px; }
+
+  .proposal-card { background: var(--color-bg-primary); border: 0.5px solid var(--color-border-secondary); border-radius: var(--radius-lg); overflow: hidden; width: 100%; }
+  .proposal-header { padding: 7px 12px; background: var(--color-bg-secondary); border-bottom: 0.5px solid var(--color-border-tertiary); display: flex; align-items: center; gap: 6px; }
+  .proposal-header i { font-size: 13px; color: var(--color-text-secondary); }
+  .proposal-section-name { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.06em; }
+  .proposal-text { font-size: 12.5px; line-height: 1.7; color: var(--color-text-primary); padding: 10px 12px; white-space: pre-wrap; max-height: 140px; overflow-y: auto; }
+  .proposal-edit-ta { display: none; width: 100%; font-size: 12.5px; line-height: 1.7; color: var(--color-text-primary); padding: 10px 12px; border: none; background: transparent; font-family: var(--font); resize: none; min-height: 80px; }
+  .proposal-edit-ta:focus { outline: none; }
+  .proposal-actions { display: flex; gap: 6px; padding: 7px 12px; border-top: 0.5px solid var(--color-border-tertiary); flex-wrap: wrap; }
+  .pa-btn { font-size: 11px; padding: 4px 10px; border-radius: var(--radius-md); border: 0.5px solid var(--color-border-secondary); cursor: pointer; display: flex; align-items: center; gap: 3px; background: transparent; font-family: var(--font); transition: background 0.12s; }
+  .pa-btn i { font-size: 12px; }
+  .pa-accept { color: var(--color-text-success); }
+  .pa-accept:hover { background: var(--color-bg-success); }
+  .pa-edit { color: var(--color-text-secondary); }
+  .pa-edit:hover { background: var(--color-bg-secondary); }
+  .pa-reject { color: var(--color-text-danger); }
+  .pa-reject:hover { background: var(--color-bg-danger); }
+  .pa-save { color: var(--color-text-info); display: none; }
+  .pa-save:hover { background: var(--color-bg-info); }
+  .pa-cancel-edit { color: var(--color-text-secondary); display: none; }
+  .proposal-done { padding: 7px 12px; font-size: 11px; color: var(--color-text-tertiary); border-top: 0.5px solid var(--color-border-tertiary); display: flex; align-items: center; gap: 5px; }
+
+  #chat-input-area { padding: 10px 12px; border-top: 0.5px solid var(--color-border-tertiary); display: flex; flex-direction: column; gap: 7px; background: var(--color-bg-primary); }
+  #ctx-display { display: flex; flex-wrap: wrap; gap: 4px; }
+  .context-tag { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; padding: 2px 7px; border-radius: 99px; }
+  .tag-meeting { background: var(--color-bg-success); color: var(--color-text-success); }
+  .tag-manual { background: var(--color-bg-warning); color: var(--color-text-warning); }
+  .tag-rm { cursor: pointer; }
+  #attach-bar { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+  .attach-btn { font-size: 11px; padding: 4px 9px; border-radius: var(--radius-md); border: 0.5px dashed var(--color-border-secondary); background: transparent; color: var(--color-text-secondary); cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: var(--font); }
+  .attach-btn:hover { background: var(--color-bg-secondary); }
+  .attach-btn i { font-size: 12px; }
+  #input-row { display: flex; gap: 7px; align-items: flex-end; }
+  #user-input { flex: 1; min-height: 36px; max-height: 100px; resize: none; font-size: 13px; padding: 8px 11px; border-radius: var(--radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-bg-secondary); color: var(--color-text-primary); font-family: var(--font); line-height: 1.5; }
+  #user-input:focus { outline: none; border-color: var(--color-border-primary); }
+  #send-btn { width: 36px; height: 36px; border-radius: var(--radius-md); border: none; background: var(--color-bg-info); color: var(--color-text-info); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: opacity 0.12s; }
+  #send-btn:hover { opacity: 0.8; }
+  #send-btn:disabled { opacity: 0.35; cursor: default; }
+  .typing { display: flex; gap: 4px; align-items: center; padding: 8px 12px; }
+  .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--color-text-tertiary); animation: bounce 1.2s infinite; }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)} }
+
+  /* PANEL */
+  #panel { display: none; flex-direction: column; gap: 7px; padding: 9px 10px; background: var(--color-bg-secondary); border-radius: var(--radius-md); border: 0.5px solid var(--color-border-tertiary); }
+  #panel-title { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); }
+  #panel input[type=text] { font-size: 11px; padding: 5px 9px; border-radius: var(--radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-bg-primary); color: var(--color-text-primary); font-family: var(--font); }
+  #panel input[type=text]:focus { outline: none; border-color: var(--color-border-primary); }
+  #panel textarea { font-size: 12px; padding: 7px 9px; border-radius: var(--radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-bg-primary); color: var(--color-text-primary); font-family: var(--font); line-height: 1.5; resize: none; height: 72px; }
+  #panel textarea:focus { outline: none; border-color: var(--color-border-primary); }
+  .panel-row { display: flex; gap: 5px; }
+  .small-btn { font-size: 11px; padding: 5px 11px; border-radius: var(--radius-md); border: 0.5px solid var(--color-border-secondary); background: transparent; color: var(--color-text-primary); cursor: pointer; font-family: var(--font); }
+  .small-btn:hover { background: var(--color-bg-secondary); }
+  .cancel-btn { color: var(--color-text-secondary); }
+
+  /* DOC PANE */
+  #doc-pane { flex: 1; overflow-y: auto; padding: 28px 32px; }
+  .doc-section { margin-bottom: 22px; }
+  .doc-section-label { font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-tertiary); margin-bottom: 7px; display: flex; align-items: center; gap: 6px; }
+  .doc-section-label i { font-size: 13px; }
+  .sec-status { margin-left: auto; font-size: 10px; padding: 1px 8px; border-radius: 99px; }
+  .sec-status.pending { background: var(--color-bg-secondary); color: var(--color-text-tertiary); border: 0.5px solid var(--color-border-tertiary); }
+  .sec-status.accepted { background: var(--color-bg-success); color: var(--color-text-success); }
+  .doc-section-text { font-size: 13.5px; line-height: 1.8; color: var(--color-text-primary); white-space: pre-wrap; border-left: 2px solid var(--color-border-tertiary); padding-left: 14px; cursor: pointer; transition: border-color 0.2s; }
+  .doc-section-text:hover { border-left-color: var(--color-border-secondary); }
+  .doc-section-text.empty { color: var(--color-text-tertiary); font-style: italic; }
+  .doc-section-text.filled { border-left-color: var(--color-border-info); }
+  .doc-section-edit { display: none; width: 100%; font-size: 13.5px; line-height: 1.8; color: var(--color-text-primary); padding: 8px 14px; border-radius: var(--radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-bg-secondary); font-family: var(--font); resize: none; min-height: 80px; margin-top: 4px; }
+  .doc-section-edit:focus { outline: none; border-color: var(--color-border-primary); }
+  .doc-edit-row { display: none; gap: 6px; margin-top: 6px; }
+  .doc-divider { border: none; border-top: 0.5px solid var(--color-border-tertiary); margin: 0 0 22px 0; }
+  .edit-hint { font-size: 10px; color: var(--color-text-tertiary); margin-top: 8px; display: flex; align-items: center; gap: 4px; }
+  @keyframes flashIn { from{opacity:0.3} to{opacity:1} }
+  .flash { animation: flashIn 0.5s ease; }
+
+  /* API KEY MODAL */
+  #api-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  #api-modal-box { background: var(--color-bg-primary); border-radius: var(--radius-lg); border: 0.5px solid var(--color-border-secondary); padding: 28px 28px 24px; width: 420px; max-width: 90vw; display: flex; flex-direction: column; gap: 14px; }
+  #api-modal h2 { font-size: 15px; font-weight: 500; color: var(--color-text-primary); }
+  #api-modal p { font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; }
+  #api-modal a { color: var(--color-text-info); }
+  #api-key-input { font-size: 13px; padding: 8px 12px; border-radius: var(--radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-bg-secondary); color: var(--color-text-primary); font-family: monospace; width: 100%; }
+  #api-key-input:focus { outline: none; border-color: var(--color-border-primary); }
+  #api-key-error { font-size: 12px; color: var(--color-text-danger); display: none; }
+  .modal-row { display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-btn { font-size: 13px; padding: 7px 16px; border-radius: var(--radius-md); border: 0.5px solid var(--color-border-secondary); background: transparent; color: var(--color-text-primary); cursor: pointer; font-family: var(--font); }
+  .modal-btn.primary { background: var(--color-bg-info); color: var(--color-text-info); border-color: transparent; }
+  .modal-btn:hover { opacity: 0.85; }
+
+  @media (max-width: 700px) {
+    #sidebar { width: 160px; min-width: 160px; }
+    #chat-pane { width: 280px; min-width: 260px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="api-modal">
+  <div id="api-modal-box">
+    <h2><i class="ti ti-key"></i> Anthropic API klíč</h2>
+    <p>Pro spuštění agenta zadej svůj Anthropic API klíč. Klíč se ukládá pouze v prohlížeči (localStorage) a nikam se neodesílá kromě Anthropic API.</p>
+    <p>Klíč získáš na <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a>.</p>
+    <input type="password" id="api-key-input" placeholder="sk-ant-..." />
+    <div id="api-key-error">Klíč musí začínat sk-ant-</div>
+    <div class="modal-row">
+      <button class="modal-btn primary" onclick="saveApiKey()">Spustit agenta</button>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <div id="sidebar-logo">
+        <i class="ti ti-file-analytics"></i>
+        <span>BA Agent</span>
+      </div>
+      <button id="new-btn" onclick="createNewBA()"><i class="ti ti-plus"></i> Nová analýza</button>
+    </div>
+    <div id="ba-list">
+      <div id="sidebar-empty">Zatím žádné analýzy.<br>Klikni na <strong>Nová analýza</strong>.</div>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="welcome">
+      <i class="ti ti-file-analytics"></i>
+      <p>Vyber analýzu nebo vytvoř novou</p>
+      <p style="font-size:12px">Klikni na <strong>Nová analýza</strong> v levém panelu</p>
+    </div>
+
+    <div id="editor">
+      <div id="editor-toolbar">
+        <input id="ba-name-input" type="text" placeholder="Název analýzy..." oninput="saveNameDebounced()" />
+        <div class="toolbar-divider"></div>
+        <button class="toolbar-btn warn" onclick="proposeAll()"><i class="ti ti-sparkles"></i> Navrhnout vše</button>
+        <button class="toolbar-btn danger" onclick="deleteBA()" title="Smazat analýzu"><i class="ti ti-trash"></i></button>
+      </div>
+
+      <div id="editor-body">
+        <!-- CHAT -->
+        <div id="chat-pane">
+          <div id="messages"></div>
+          <div id="chat-input-area">
+            <div id="ctx-display"></div>
+            <div id="panel">
+              <div id="panel-title"></div>
+              <input type="text" id="panel-label" placeholder="" style="display:none" />
+              <textarea id="panel-text" placeholder=""></textarea>
+              <div class="panel-row">
+                <button class="small-btn" onclick="attachPanel()"><i class="ti ti-check"></i> Přiložit</button>
+                <button class="small-btn cancel-btn" onclick="closePanel()">Zrušit</button>
+              </div>
+            </div>
+            <div id="attach-bar">
+              <button class="attach-btn" onclick="openPanel('meeting')"><i class="ti ti-notes"></i> Meeting notes</button>
+              <button class="attach-btn" onclick="openPanel('manual')"><i class="ti ti-list-details"></i> Manuální data</button>
+            </div>
+            <div id="input-row">
+              <textarea id="user-input" placeholder="Piš libovolně — o cílech, datech, rolích..." rows="1"></textarea>
+              <button id="send-btn" onclick="sendMessage()"><i class="ti ti-send"></i></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- DOC -->
+        <div id="doc-pane">
+          <div class="doc-section">
+            <div class="doc-section-label"><i class="ti ti-target"></i> Objective <span class="sec-status pending" id="status-objective">Čeká</span></div>
+            <div class="doc-section-text empty" id="txt-objective">Zatím neschváleno.</div>
+            <textarea class="doc-section-edit" id="edit-objective"></textarea>
+            <div class="doc-edit-row" id="editrow-objective">
+              <button class="small-btn" onclick="saveDocEdit('objective')"><i class="ti ti-check"></i> Uložit</button>
+              <button class="small-btn cancel-btn" onclick="cancelDocEdit('objective')">Zrušit</button>
+            </div>
+          </div>
+          <hr class="doc-divider">
+          <div class="doc-section">
+            <div class="doc-section-label"><i class="ti ti-layout-list"></i> Key Features <span class="sec-status pending" id="status-key_features">Čeká</span></div>
+            <div class="doc-section-text empty" id="txt-key_features">Zatím neschváleno.</div>
+            <textarea class="doc-section-edit" id="edit-key_features"></textarea>
+            <div class="doc-edit-row" id="editrow-key_features">
+              <button class="small-btn" onclick="saveDocEdit('key_features')"><i class="ti ti-check"></i> Uložit</button>
+              <button class="small-btn cancel-btn" onclick="cancelDocEdit('key_features')">Zrušit</button>
+            </div>
+          </div>
+          <hr class="doc-divider">
+          <div class="doc-section">
+            <div class="doc-section-label"><i class="ti ti-users"></i> Target Users <span class="sec-status pending" id="status-target_users">Čeká</span></div>
+            <div class="doc-section-text empty" id="txt-target_users">Zatím neschváleno.</div>
+            <textarea class="doc-section-edit" id="edit-target_users"></textarea>
+            <div class="doc-edit-row" id="editrow-target_users">
+              <button class="small-btn" onclick="saveDocEdit('target_users')"><i class="ti ti-check"></i> Uložit</button>
+              <button class="small-btn cancel-btn" onclick="cancelDocEdit('target_users')">Zrušit</button>
+            </div>
+          </div>
+          <hr class="doc-divider">
+          <div class="doc-section">
+            <div class="doc-section-label"><i class="ti ti-database"></i> Data Sources <span class="sec-status pending" id="status-data_sources">Čeká</span></div>
+            <div class="doc-section-text empty" id="txt-data_sources">Zatím neschváleno.</div>
+            <textarea class="doc-section-edit" id="edit-data_sources"></textarea>
+            <div class="doc-edit-row" id="editrow-data_sources">
+              <button class="small-btn" onclick="saveDocEdit('data_sources')"><i class="ti ti-check"></i> Uložit</button>
+              <button class="small-btn cancel-btn" onclick="cancelDocEdit('data_sources')">Zrušit</button>
+            </div>
+          </div>
+          <hr class="doc-divider">
+          <div class="doc-section">
+            <div class="doc-section-label"><i class="ti ti-shield-lock"></i> Authorization Concept <span class="sec-status pending" id="status-authorization">Čeká</span></div>
+            <div class="doc-section-text empty" id="txt-authorization">Zatím neschváleno.</div>
+            <textarea class="doc-section-edit" id="edit-authorization"></textarea>
+            <div class="doc-edit-row" id="editrow-authorization">
+              <button class="small-btn" onclick="saveDocEdit('authorization')"><i class="ti ti-check"></i> Uložit</button>
+              <button class="small-btn cancel-btn" onclick="cancelDocEdit('authorization')">Zrušit</button>
+            </div>
+          </div>
+          <hr class="doc-divider">
+          <div class="doc-section">
+            <div class="doc-section-label"><i class="ti ti-table"></i> Required Data <span class="sec-status pending" id="status-required_data">Čeká</span></div>
+            <div class="doc-section-text empty" id="txt-required_data">Zatím neschváleno.</div>
+            <textarea class="doc-section-edit" id="edit-required_data"></textarea>
+            <div class="doc-edit-row" id="editrow-required_data">
+              <button class="small-btn" onclick="saveDocEdit('required_data')"><i class="ti ti-check"></i> Uložit</button>
+              <button class="small-btn cancel-btn" onclick="cancelDocEdit('required_data')">Zrušit</button>
+            </div>
+          </div>
+          <p class="edit-hint"><i class="ti ti-pencil"></i> Klikni na text sekce pro přímou úpravu</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SECTION_META = {
+  objective:     { label: 'Objective',             icon: 'ti-target' },
+  key_features:  { label: 'Key Features',          icon: 'ti-layout-list' },
+  target_users:  { label: 'Target Users',          icon: 'ti-users' },
+  data_sources:  { label: 'Data Sources',          icon: 'ti-database' },
+  authorization: { label: 'Authorization Concept', icon: 'ti-shield-lock' },
+  required_data: { label: 'Required Data',         icon: 'ti-table' },
+};
+const KEYS = Object.keys(SECTION_META);
+
+const SYSTEM_PROMPT = `Jsi Business Analysis Agent pro interní datový tým. Tvoříš business analýzy pro datová řešení: SAP / interní systémy → Databricks (Bronze/Silver/Gold) → Power BI.
+
+Uživatel ti říká informace v libovolném pořadí. Průběžně nabízíš návrhy textu pro sekce dokumentu — uživatel je schvaluje, upravuje nebo odmítá.
+
+SEKCE:
+- objective: Jaký byznys problém řeší? Co má dosáhnout? Jakou hodnotu přináší?
+- key_features: Klíčové funkce z byznys pohledu
+- target_users: Kdo bude používat, jaké role, jaké potřeby
+- data_sources: Zdrojové systémy (SAP moduly, interní systémy), co každý poskytuje
+- authorization: Row Level Security (RLS) — jak jsou data filtrována per uživatel/role; User roles — jaké role existují a k čemu mají přístup
+- required_data: Konkrétní data: tabulky, pole, metriky, KPIs, číselníky
+
+FORMÁT KAŽDÉ ODPOVĚDI:
+<chat>Přirozená odpověď česky. Max 2 doplňující otázky.</chat>
+<proposals>[{"key":"...","text":"..."}]</proposals>
+
+- Do proposals dávej jen sekce kde máš dost informací
+- Pokud nemáš nic: <proposals>[]</proposals>
+- Nenavrhuj sekce označené jako schválené
+- Při [NAVRHNOUT_VSE]: navrhni všechny neschválené sekce najednou`;
+
+let baList = {};
+let currentId = null;
+let attached = [];
+let currentPanelType = null;
+let proposalCounter = 0;
+let saveNameTimer = null;
+let apiKey = '';
+
+// API KEY
+function saveApiKey() {
+  const val = document.getElementById('api-key-input').value.trim();
+  if (!val.startsWith('sk-ant-')) {
+    document.getElementById('api-key-error').style.display = 'block';
+    return;
+  }
+  apiKey = val;
+  localStorage.setItem('ba-agent-apikey', val);
+  document.getElementById('api-modal').style.display = 'none';
+}
+
+function loadApiKey() {
+  const saved = localStorage.getItem('ba-agent-apikey');
+  if (saved && saved.startsWith('sk-ant-')) {
+    apiKey = saved;
+    document.getElementById('api-modal').style.display = 'none';
+  }
+}
+
+// STORAGE
+function persist() {
+  try { localStorage.setItem('ba-agent-data', JSON.stringify(baList)); } catch {}
+}
+function loadAll() {
+  try {
+    const raw = localStorage.getItem('ba-agent-data');
+    if (raw) baList = JSON.parse(raw);
+  } catch {}
+  renderSidebar();
+}
+
+// BA MANAGEMENT
+function createNewBA() {
+  const id = 'ba-' + Date.now();
+  baList[id] = { name: 'Nová analýza', messages: [], sections: {}, acceptedKeys: [], updatedAt: Date.now() };
+  persist();
+  openBA(id);
+}
+
+function openBA(id) {
+  currentId = id;
+  const ba = baList[id];
+  renderSidebar();
+  document.getElementById('welcome').style.display = 'none';
+  document.getElementById('editor').style.display = 'flex';
+  document.getElementById('ba-name-input').value = ba.name;
+
+  document.getElementById('messages').innerHTML = '';
+  if (ba.messages.length === 0) {
+    appendMessage('agent', `Ahoj! Pracuji na analýze „${ba.name}". Řekni mi co víš — o cílech, datech, uživatelích, rolích, klidně v libovolném pořadí. Budu ti průběžně navrhovat texty pro jednotlivé sekce.`);
+  } else {
+    ba.messages.forEach(m => {
+      if (m.role === 'user' && !m.content.startsWith('[')) appendMessage('user', m.display || m.content);
+      else if (m.role === 'assistant') {
+        const { chatText, proposals } = parseResponse(m.content);
+        if (chatText) appendMessage('agent', chatText);
+        if (proposals.length) renderProposals(proposals, true);
+      }
+    });
+  }
+
+  KEYS.forEach(k => {
+    const txt = document.getElementById('txt-' + k);
+    const st = document.getElementById('status-' + k);
+    const val = ba.sections[k] || '';
+    if (val) {
+      txt.textContent = val; txt.classList.remove('empty'); txt.classList.add('filled');
+      st.textContent = 'Schváleno'; st.className = 'sec-status accepted';
+    } else {
+      txt.textContent = 'Zatím neschváleno.'; txt.classList.add('empty'); txt.classList.remove('filled');
+      st.textContent = 'Čeká'; st.className = 'sec-status pending';
+    }
+    cancelDocEdit(k);
+  });
+}
+
+function deleteBA() {
+  if (!currentId || !confirm('Smazat tuto analýzu?')) return;
+  delete baList[currentId];
+  currentId = null;
+  persist();
+  renderSidebar();
+  document.getElementById('editor').style.display = 'none';
+  document.getElementById('welcome').style.display = 'flex';
+}
+
+function saveNameDebounced() {
+  clearTimeout(saveNameTimer);
+  saveNameTimer = setTimeout(() => {
+    if (!currentId) return;
+    baList[currentId].name = document.getElementById('ba-name-input').value || 'Bez názvu';
+    baList[currentId].updatedAt = Date.now();
+    persist(); renderSidebar();
+  }, 500);
+}
+
+function renderSidebar() {
+  const list = document.getElementById('ba-list');
+  const ids = Object.keys(baList).sort((a, b) => (baList[b].updatedAt || 0) - (baList[a].updatedAt || 0));
+  if (ids.length === 0) {
+    list.innerHTML = '<div id="sidebar-empty">Zatím žádné analýzy.<br>Klikni na <strong>Nová analýza</strong>.</div>';
+    return;
+  }
+  list.innerHTML = ids.map(id => {
+    const ba = baList[id];
+    const accepted = (ba.acceptedKeys || []).length;
+    const pips = KEYS.map(k => `<div class="ba-pip ${(ba.acceptedKeys||[]).includes(k)?'done':''}"></div>`).join('');
+    const date = ba.updatedAt ? new Date(ba.updatedAt).toLocaleDateString('cs-CZ',{day:'2-digit',month:'2-digit'}) : '';
+    return `<div class="ba-item ${id===currentId?'active':''}" onclick="openBA('${id}')">
+      <div class="ba-item-name">${ba.name||'Bez názvu'}</div>
+      <div class="ba-item-meta">${accepted}/${KEYS.length} sekcí · ${date}</div>
+      <div class="ba-item-progress">${pips}</div>
+    </div>`;
+  }).join('');
+}
+
+// DOC EDITING
+function startDocEdit(key) {
+  const txt = document.getElementById('txt-'+key);
+  const edit = document.getElementById('edit-'+key);
+  const row = document.getElementById('editrow-'+key);
+  edit.value = txt.classList.contains('empty') ? '' : txt.textContent;
+  edit.style.display = 'block';
+  edit.style.height = 'auto';
+  edit.style.height = Math.max(edit.scrollHeight, 80) + 'px';
+  row.style.display = 'flex';
+  txt.style.display = 'none';
+  edit.focus();
+}
+function saveDocEdit(key) {
+  const val = document.getElementById('edit-'+key).value.trim();
+  if (!val) return;
+  applySection(key, val);
+  cancelDocEdit(key);
+}
+function cancelDocEdit(key) {
+  document.getElementById('edit-'+key).style.display = 'none';
+  document.getElementById('editrow-'+key).style.display = 'none';
+  document.getElementById('txt-'+key).style.display = 'block';
+}
+document.querySelectorAll('.doc-section-text').forEach(el => {
+  const key = el.id.replace('txt-', '');
+  el.title = 'Klikni pro úpravu';
+  el.addEventListener('click', () => startDocEdit(key));
+});
+
+function applySection(key, text) {
+  if (!currentId) return;
+  baList[currentId].sections[key] = text;
+  if (!baList[currentId].acceptedKeys.includes(key)) baList[currentId].acceptedKeys.push(key);
+  baList[currentId].updatedAt = Date.now();
+  persist(); renderSidebar();
+  const el = document.getElementById('txt-'+key);
+  const st = document.getElementById('status-'+key);
+  el.textContent = text; el.classList.remove('empty'); el.classList.add('filled','flash');
+  st.textContent = 'Schváleno'; st.className = 'sec-status accepted';
+  setTimeout(() => el.classList.remove('flash'), 600);
+}
+
+// PROPOSALS
+function parseResponse(raw) {
+  const chatMatch = raw.match(/<chat>([\s\S]*?)<\/chat>/);
+  const propMatch = raw.match(/<proposals>([\s\S]*?)<\/proposals>/);
+  const chatText = chatMatch ? chatMatch[1].trim() : (raw.includes('<') ? '' : raw.trim());
+  let proposals = [];
+  if (propMatch) { try { proposals = JSON.parse(propMatch[1].trim()); } catch {} }
+  return { chatText, proposals };
+}
+
+function renderProposals(proposals, readonly) {
+  proposals.forEach(p => {
+    if (!p.text || !p.text.trim()) return;
+    if (!readonly && currentId && baList[currentId].acceptedKeys.includes(p.key)) return;
+    const id = 'prop-'+(++proposalCounter);
+    const meta = SECTION_META[p.key] || { label: p.key, icon: 'ti-file' };
+    const isAccepted = currentId && (baList[currentId].acceptedKeys||[]).includes(p.key);
+    const div = document.createElement('div');
+    div.className = 'msg agent';
+    div.innerHTML = `<span class="msg-label">Návrh sekce</span>
+      <div class="proposal-card" id="${id}">
+        <div class="proposal-header"><i class="ti ${meta.icon}"></i><span class="proposal-section-name">${meta.label}</span></div>
+        <div class="proposal-text" id="${id}-text">${p.text}</div>
+        <textarea class="proposal-edit-ta" id="${id}-edit">${p.text}</textarea>
+        ${readonly||isAccepted
+          ? `<div class="proposal-done"><i class="ti ti-check"></i> ${isAccepted?'Schváleno':'Z předchozí relace'}</div>`
+          : `<div class="proposal-actions">
+              <button class="pa-btn pa-accept" onclick="handleAccept('${id}','${p.key}')"><i class="ti ti-check"></i> Přijmout</button>
+              <button class="pa-btn pa-edit" id="${id}-btn-edit" onclick="handleEdit('${id}')"><i class="ti ti-pencil"></i> Upravit</button>
+              <button class="pa-btn pa-save" id="${id}-btn-save" onclick="handleSave('${id}','${p.key}')"><i class="ti ti-check"></i> Uložit</button>
+              <button class="pa-btn pa-cancel-edit" id="${id}-btn-cancel" onclick="handleCancelEdit('${id}')">Zrušit</button>
+              <button class="pa-btn pa-reject" onclick="handleReject('${id}','${p.key}')"><i class="ti ti-x"></i> Odmítnout</button>
+            </div>`}
+      </div>`;
+    document.getElementById('messages').appendChild(div);
+    document.getElementById('messages').scrollTop = 99999;
+  });
+}
+
+function handleAccept(id, key) {
+  const text = document.getElementById(id+'-text').textContent;
+  applySection(key, text);
+  lockCard(id, 'Přijato');
+  if (currentId) { baList[currentId].messages.push({role:'user',content:`[Sekce "${SECTION_META[key].label}" SCHVÁLENA]`}); persist(); }
+}
+function handleEdit(id) {
+  document.getElementById(id+'-text').style.display = 'none';
+  const ta = document.getElementById(id+'-edit');
+  ta.style.display = 'block'; ta.style.height = Math.max(ta.scrollHeight,80)+'px'; ta.focus();
+  document.getElementById(id+'-btn-edit').style.display = 'none';
+  document.getElementById(id+'-btn-save').style.display = 'flex';
+  document.getElementById(id+'-btn-cancel').style.display = 'flex';
+}
+function handleCancelEdit(id) {
+  document.getElementById(id+'-text').style.display = 'block';
+  document.getElementById(id+'-edit').style.display = 'none';
+  document.getElementById(id+'-btn-edit').style.display = 'flex';
+  document.getElementById(id+'-btn-save').style.display = 'none';
+  document.getElementById(id+'-btn-cancel').style.display = 'none';
+}
+function handleSave(id, key) {
+  const val = document.getElementById(id+'-edit').value.trim();
+  if (!val) return;
+  document.getElementById(id+'-text').textContent = val;
+  applySection(key, val);
+  lockCard(id, 'Upraveno a přijato');
+  if (currentId) { baList[currentId].messages.push({role:'user',content:`[Sekce "${SECTION_META[key].label}" SCHVÁLENA po úpravě]`}); persist(); }
+}
+function handleReject(id, key) {
+  lockCard(id, 'Odmítnuto');
+  if (currentId) { baList[currentId].messages.push({role:'user',content:`[Sekce "${SECTION_META[key].label}" ODMÍTNUTA — navrhni jiný text]`}); persist(); }
+  appendMessage('user', `Odmítám návrh: ${SECTION_META[key].label}`);
+  runAPI();
+}
+function lockCard(id, label) {
+  const card = document.getElementById(id);
+  const acts = card.querySelector('.proposal-actions');
+  if (acts) acts.innerHTML = `<div class="proposal-done"><i class="ti ti-check"></i> ${label}</div>`;
+  document.getElementById(id+'-text').style.display = 'block';
+  document.getElementById(id+'-edit').style.display = 'none';
+}
+
+// PANEL
+function openPanel(type) {
+  currentPanelType = type;
+  const title = document.getElementById('panel-title');
+  const text = document.getElementById('panel-text');
+  const label = document.getElementById('panel-label');
+  if (type==='meeting') { title.textContent='Meeting notes'; label.placeholder='Název schůzky...'; text.placeholder='Poznámky nebo transkript...'; }
+  else { title.textContent='Manuální data'; label.placeholder='Popis...'; text.placeholder='Tabulky, pole, výčty, role...'; }
+  label.style.display='block';
+  document.getElementById('panel').style.display='flex';
+  text.focus();
+}
+function closePanel() {
+  document.getElementById('panel').style.display='none';
+  document.getElementById('panel-label').value='';
+  document.getElementById('panel-text').value='';
+  currentPanelType=null;
+}
+function attachPanel() {
+  const label=document.getElementById('panel-label').value.trim();
+  const text=document.getElementById('panel-text').value.trim();
+  if (!text) return;
+  attached.push({type:currentPanelType,label:label||(currentPanelType==='meeting'?'Meeting notes':'Manuální data'),text});
+  renderTags(); closePanel();
+}
+function removeAttached(idx) { attached.splice(idx,1); renderTags(); }
+function renderTags() {
+  document.getElementById('ctx-display').innerHTML = attached.map((a,i) =>
+    `<span class="context-tag ${a.type==='meeting'?'tag-meeting':'tag-manual'}"><i class="ti ${a.type==='meeting'?'ti-notes':'ti-list-details'}"></i> ${a.label} <span class="tag-rm" onclick="removeAttached(${i})"><i class="ti ti-x"></i></span></span>`
+  ).join('');
+}
+
+// CHAT
+function appendMessage(role, text) {
+  const c=document.getElementById('messages');
+  const d=document.createElement('div');
+  d.className=`msg ${role}`;
+  d.innerHTML=`<span class="msg-label">${role==='user'?'Ty':'Agent'}</span><div class="bubble">${text}</div>`;
+  c.appendChild(d); c.scrollTop=c.scrollHeight;
+}
+function showTyping() {
+  const c=document.getElementById('messages');
+  const d=document.createElement('div');
+  d.className='msg agent'; d.id='typing-ind';
+  d.innerHTML=`<span class="msg-label">Agent</span><div class="bubble typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+  c.appendChild(d); c.scrollTop=c.scrollHeight;
+}
+function removeTyping() { const el=document.getElementById('typing-ind'); if(el) el.remove(); }
+
+async function callAPI() {
+  if (!currentId||!apiKey) return '';
+  const msgs = baList[currentId].messages;
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,system:SYSTEM_PROMPT,messages:msgs})
+  });
+  const data=await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.content?.[0]?.text||'';
+}
+
+async function runAPI() {
+  showTyping();
+  try {
+    const raw=await callAPI();
+    removeTyping();
+    if (!raw) return;
+    if (currentId) { baList[currentId].messages.push({role:'assistant',content:raw}); persist(); }
+    const {chatText,proposals}=parseResponse(raw);
+    if (chatText) appendMessage('agent',chatText);
+    if (proposals.length) renderProposals(proposals,false);
+  } catch(e) {
+    removeTyping();
+    appendMessage('agent','Chyba: '+e.message);
+  }
+}
+
+async function proposeAll() {
+  if (!currentId) return;
+  const pending=KEYS.filter(k=>!(baList[currentId].acceptedKeys||[]).includes(k));
+  if (pending.length===0) { appendMessage('agent','Všechny sekce jsou schváleny!'); return; }
+  baList[currentId].messages.push({role:'user',content:`[NAVRHNOUT_VSE] Navrhni texty pro sekce: ${pending.join(', ')}`});
+  appendMessage('user','Navrhni všechny zbývající sekce.');
+  await runAPI();
+}
+
+async function sendMessage() {
+  if (!currentId) return;
+  const input=document.getElementById('user-input');
+  const text=input.value.trim();
+  if (!text&&attached.length===0) return;
+  const btn=document.getElementById('send-btn');
+  btn.disabled=true; input.value=''; input.style.height='auto';
+  let userContent=text||'', displayText=text||'';
+  if (attached.length>0) {
+    const blocks=attached.map(a=>`--- ${a.type==='meeting'?'MEETING NOTES':'MANUÁLNÍ DATA'}: ${a.label} ---\n${a.text}`).join('\n\n');
+    userContent+=`\n\n[PŘILOŽENÉ PODKLADY:]\n${blocks}`;
+    displayText+=(displayText?'\n':'')+attached.map(a=>(a.type==='meeting'?'📋':'📄')+' '+a.label).join(', ');
+    attached=[]; renderTags();
+  }
+  appendMessage('user',displayText);
+  baList[currentId].messages.push({role:'user',content:userContent,display:displayText});
+  baList[currentId].updatedAt=Date.now(); persist();
+  await runAPI();
+  btn.disabled=false; document.getElementById('user-input').focus();
+}
+
+document.getElementById('user-input').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}
+});
+document.getElementById('user-input').addEventListener('input',function(){
+  this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,100)+'px';
+});
+
+// INIT
+loadApiKey();
+loadAll();
+</script>
+</body>
+</html>
